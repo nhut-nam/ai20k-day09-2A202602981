@@ -40,18 +40,18 @@ Vì sao test `max_gap_ms` là `warn` còn `in_range` là `error`? Kết quả th
 ### Câu 4
 Dựa vào `idempotency.json`: số dòng trước và sau hai lần chạy lại, và khi ghi kiểu `append`. Vì sao Delta `overwrite` theo partition (một trip) an toàn hơn xoá rồi ghi lại, nhất là khi giữa chừng có lỗi?
 
-(trả lời ở đây)
+Với trip-00003, trước và sau hai lần chạy lại bảng Silver đều có 1.246 dòng; dấu vân tay đều là `6c7480dfde7e`. Nếu append hai lần, riêng trip có 60 khung thành 120 dòng. Delta `overwrite` với predicate `trip_id` tạo một commit thay thế đúng phần dữ liệu của trip; nếu thao tác lỗi trước commit, bảng cũ vẫn đọc được. Xoá rồi ghi là hai thao tác riêng, nên lỗi giữa chừng có thể để lại trip rỗng hoặc thiếu khung.
 
 ### Câu 5
 Khung hình **đen** và khung hình **tối** khác nhau thế nào, pipeline xử lý khác nhau ra sao, bạn có đồng ý không? Dựa vào `threshold.json`: nếu chọn ngưỡng 0, 2, 6 thì bao nhiêu khung bị coi là trùng ở mỗi drive? Bạn chọn ngưỡng nào, vì sao, và ngưỡng đó phụ thuộc vào tốc độ xe thế nào?
 
 | dHash khác tối đa | số khung trùng, drive A | số khung trùng, drive B |
 |---|---|---|
-| 0 | | |
-| 2 | | |
-| 6 | | |
+| 0 | 61 | 8 |
+| 2 | 149 | 53 |
+| 6 | 363 | 244 |
 
-(trả lời ở đây)
+Khung đen dưới ngưỡng sáng 12 thường là hỏng tín hiệu: A có 6, B có 4 và Gold loại bỏ. Khung tối (12–40) vẫn có nội dung đường hầm/bóng râm: A có 4, B có 61, được gắn cờ nhưng giữ nếu qua các điều kiện khác. Mình đồng ý giữ khung tối vì điều kiện thiếu sáng là tình huống thật cần học. Chọn ngưỡng dHash 2 như pipeline: ngưỡng 6 loại quá nhiều khung có thể khác nhau thật, còn 0 bỏ sót các bản gần trùng. Xe chạy chậm làm các khung liên tiếp giống nhau hơn; vì vậy cần xem ngưỡng cùng tốc độ và kiểm tra ảnh mẫu, không chỉ nhìn tổng số.
 
 ## Bước 4 · Gold
 
