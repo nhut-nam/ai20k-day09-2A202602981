@@ -4,9 +4,9 @@
 
 | | |
 |---|---|
-| Họ và tên | `<điền>` |
-| MSSV (đúng bằng `LAB_STUDENT_ID` trong `.env`) | `<điền>` |
-| GitHub | `<điền: tên tài khoản>` |
+| Họ và tên | Nguyễn Trần Nhựt Nam |
+| MSSV (đúng bằng `LAB_STUDENT_ID` trong `.env`) | 2A202602981 |
+| GitHub | nhut-nam |
 | Trip dùng cho bài tập sập và chạy lại (xem GUIDE, bước 5) | `<điền: trip-xxxxx>` |
 
 ## Kết quả cuối
@@ -21,7 +21,7 @@
 ### Câu 1
 Liệt kê **ít nhất 4 khác biệt** giữa telemetry nguồn A và nguồn B mà bạn thấy ở bronze. Vì sao pipeline giữ **mỗi nguồn một bảng bronze** và để mọi cột ở dạng chữ, thay vì gộp và ép kiểu ngay?
 
-(trả lời ở đây)
+Bronze ghi 3.021 dòng telemetry A, 3.234 dòng B, 26 trip và đúng 2 video. A có `ts_utc` dạng ISO UTC, `speed_mps`, `heading_deg`, `gas` và `brake` dạng tỉ lệ; B có `timestamp_ms` dạng epoch mili giây, `spd_kmh`, `hdg`, `throttle_pct` và `brake_pct` dạng phần trăm. B còn khai báo đồng hồ nhanh hơn video 1.500 ms. Giữ hai bảng riêng và mọi giá trị gốc dạng chữ giúp bảo toàn dữ liệu, truy vết schema của từng nguồn và cách ly lỗi ép kiểu ở Silver. Chạy lại ingest A báo `already present`, số dòng không tăng.
 
 ## Bước 2 · Silver telemetry
 
