@@ -28,12 +28,12 @@ Bronze ghi 3.021 dòng telemetry A, 3.234 dòng B, 26 trip và đúng 2 video. A
 ### Câu 2
 Pipeline đưa hai nguồn về một schema như thế nào (đơn vị, kiểu thời gian, **độ lệch đồng hồ**)? Bằng chứng nào trong kết quả bước 2 cho thấy đã đúng? Dán bảng quarantine của bạn (số dòng theo từng lý do, từng drive) và giải thích vì sao dòng lỗi vào `rejects` thay vì bị xoá.
 
-(trả lời ở đây)
+`stg_telemetry_a` ép `ts_utc` sang timestamp UTC, giữ tốc độ m/s. `stg_telemetry_b` đổi `timestamp_ms` từ epoch mili giây sang UTC sau khi trừ 1.500 ms theo `bronze.video_files`, đổi km/h sang m/s và bàn đạp từ phần trăm sang tỉ lệ. Sau chuẩn hóa, B bắt đầu lúc 2025-10-08 14:30:00.009 UTC, lệch video chỉ 9 ms; tốc độ tối đa A/B lần lượt 71/100 km/h. Quarantine ở **mỗi** drive: 20 `duplicate`, 30 `speed_missing`, 3 `speed_out_of_range` (tổng 106). Dòng sạch A/B là 2.968/3.181; sạch cộng cách ly khớp đúng 3.021/3.234 dòng gốc. Giữ rejects giúp kiểm toán và sửa nguồn, không làm mất dấu dữ liệu đầu vào.
 
 ### Câu 3
 Vì sao test `max_gap_ms` là `warn` còn `in_range` là `error`? Kết quả thí nghiệm `break-gate` của bạn (`break_gate.json`): test nào bắt được, bao nhiêu dòng, và điều đó cho biết gì về vai trò của "cổng chất lượng"?
 
-(trả lời ở đây)
+`max_gap_ms` báo khoảng mất tín hiệu cảm biến đã biết; đây là sự cố cần quan sát nhưng không nhất thiết làm hỏng toàn bộ telemetry. `in_range` kiểm tra tốc độ 0–70 m/s, nên giá trị vượt ngưỡng sẽ chặn dữ liệu đi tiếp. Bình thường dbt test có PASS=6, WARN=1, ERROR=0. Khi `break-gate` nới luật làm sạch lên 1.000 m/s, test `in_range_silver_telemetry_speed_mps__70__0` bắt 6 dòng: PASS=5, WARN=1, ERROR=1. Sau khôi phục luật gốc lại PASS=6, WARN=1, ERROR=0; cổng chất lượng phát hiện dữ liệu vô lý dù bước làm sạch bị nới sai.
 
 ## Bước 3 · Silver frames
 
