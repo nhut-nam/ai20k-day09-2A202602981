@@ -11,8 +11,8 @@
 
 ## Kết quả cuối
 
-- `dataset_version` của bạn: `<điền>`  (phải khớp `report/evidence/run_summary.json`)
-- Số khung hình train / val / test của bạn: `<điền>`
+- `dataset_version` của bạn: `78fe906f5643`  (phải khớp `report/evidence/run_summary.json`)
+- Số khung hình train / val / test của bạn: 741 / 134 / 144
 - `report/verify.txt`: tạo bằng `python3 scripts/check_submission.py --save-verify` (phải có `27/27 checks passed`).
 - Ảnh chụp trong `report/screenshots/`: `airflow_graph.png`, `minio_lake.png`, `metabase_dashboard.png`, và ảnh bài tập sập/chạy lại (log task đỏ thấy trip của bạn).
 
@@ -58,17 +58,17 @@ Khung đen dưới ngưỡng sáng 12 thường là hỏng tín hiệu: A có 6,
 ### Câu 6
 Dựa vào `leakage.json`: chia theo khung hình làm bao nhiêu trip bị chia cắt, so với chia theo trip? Vì sao điều này làm điểm kiểm thử đẹp một cách giả tạo?
 
-(trả lời ở đây)
+Trong 1.019 khung đáng dùng thuộc 26 trip, chia ngẫu nhiên theo khung làm cả 26 trip nằm ở nhiều split; cả 26 trip đều có khung ở train lẫn test. Chia theo trip trong Gold cho 0 trip bị chia cắt. Các khung sát nhau cùng cảnh, ánh sáng và đường đi; khi chúng xuất hiện ở cả train và test, mô hình có thể nhận ra cảnh đã học thay vì tổng quát hóa sang chuyến mới, làm điểm kiểm thử cao giả tạo.
 
 ### Câu 7
 Vì sao `dataset_version` là **băm nội dung** chứ không phải ngày giờ hay số đếm? Hai lần chạy liên tiếp cho kết quả gì? Vì sao `dataset_version` của bạn **khác** bạn bè dù cùng dữ liệu (liên hệ MSSV)?
 
-(trả lời ở đây)
+`publish.export_dataset` băm danh sách `frame_id|split` đã sắp xếp và lấy 12 ký tự SHA-256, nên cùng tập ảnh và cách chia sẽ cho cùng version, độc lập thời điểm chạy. Xuất lại cho cùng `78fe906f5643`, 1.019 khung và 741/134/144 khung train/val/test; SHA-256 của manifest Parquet cũng giữ nguyên `b2062493…e9d8`. MSSV `2A202602981` được đưa vào thứ tự băm của 26 trip trước khi chia split, nên MSSV khác thường đổi cặp frame/split và đổi version dù video gốc giống nhau.
 
 ### Câu 8
 Đọc phần `lineage` trong `manifest.json` của dataset bạn. Trả lời "dataset này được tạo từ dữ liệu nào?" bằng chính nội dung đó. Nếu một người hỏi 3 tháng sau, thông tin nào giúp tái tạo lại đúng dataset này?
 
-(trả lời ở đây)
+Dataset `78fe906f5643` gồm 1.019 ảnh từ 2 video. Manifest ghi Bronze `raw_telemetry_a`, `raw_telemetry_b`, `trips_raw` ở Delta version 0, `video_files` version 1; Silver `frames` version 27, `telemetry`, `frames_flagged`, `frame_telemetry` version 0. SHA-256 video A là `636ba1a98dfc5ba665d1c935e1d2064e69f4df360ff9ffbd15795957d5e7e9aa`, B là `bfa62703f645ff77a8578ae3fc74a00881140d38a404d43c8e2af265bbee9fdc`. Để tái tạo cần đúng file gốc theo hash, các phiên bản bảng, mã và luật lọc/chia split, cùng MSSV này; manifest Parquet có danh sách frame, split và đường dẫn ảnh để đối chiếu.
 
 ## Bước 5 · Điều phối và phục vụ
 
