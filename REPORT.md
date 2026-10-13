@@ -7,7 +7,9 @@
 | Họ và tên | Nguyễn Trần Nhựt Nam |
 | MSSV (đúng bằng `LAB_STUDENT_ID` trong `.env`) | 2A202602981 |
 | GitHub | nhut-nam |
-| Trip dùng cho bài tập sập và chạy lại (xem GUIDE, bước 5) | `<điền: trip-xxxxx>` |
+| Trip dùng cho bài tập sập và chạy lại (xem GUIDE, bước 5) | trip-02736 |
+
+MSSV có chữ `A`, nên lệnh `int(MSSV)` trong GUIDE không chạy được. Mình bỏ ký tự không phải chữ số, dùng `2202602981 % 26 = 7` trên danh sách trip đã sắp xếp; mapped task 7 là `trip-02736`.
 
 ## Kết quả cuối
 
@@ -68,28 +70,28 @@ Vì sao `dataset_version` là **băm nội dung** chứ không phải ngày gi�
 ### Câu 8
 Đọc phần `lineage` trong `manifest.json` của dataset bạn. Trả lời "dataset này được tạo từ dữ liệu nào?" bằng chính nội dung đó. Nếu một người hỏi 3 tháng sau, thông tin nào giúp tái tạo lại đúng dataset này?
 
-Dataset `78fe906f5643` gồm 1.019 ảnh từ 2 video. Manifest ghi Bronze `raw_telemetry_a`, `raw_telemetry_b`, `trips_raw` ở Delta version 0, `video_files` version 1; Silver `frames` version 27, `telemetry`, `frames_flagged`, `frame_telemetry` version 0. SHA-256 video A là `636ba1a98dfc5ba665d1c935e1d2064e69f4df360ff9ffbd15795957d5e7e9aa`, B là `bfa62703f645ff77a8578ae3fc74a00881140d38a404d43c8e2af265bbee9fdc`. Để tái tạo cần đúng file gốc theo hash, các phiên bản bảng, mã và luật lọc/chia split, cùng MSSV này; manifest Parquet có danh sách frame, split và đường dẫn ảnh để đối chiếu.
+Dataset `78fe906f5643` gồm 1.019 ảnh từ 2 video. Manifest của lần chạy cuối ghi Bronze `raw_telemetry_a`, `raw_telemetry_b`, `trips_raw` ở Delta version 0, `video_files` version 1; Silver `frames` version 25, `telemetry`, `frames_flagged`, `frame_telemetry` version 0. SHA-256 video A là `636ba1a98dfc5ba665d1c935e1d2064e69f4df360ff9ffbd15795957d5e7e9aa`, B là `bfa62703f645ff77a8578ae3fc74a00881140d38a404d43c8e2af265bbee9fdc`. Để tái tạo cần đúng file gốc theo hash, các phiên bản bảng, mã và luật lọc/chia split, cùng MSSV này; manifest Parquet có danh sách frame, split và đường dẫn ảnh để đối chiếu.
 
 ## Bước 5 · Điều phối và phục vụ
 
 ### Câu 9
 Mô tả chính xác điều xảy ra khi trip của bạn sập rồi chạy lại: bao nhiêu task chuyển đỏ, bao nhiêu task `upstream_failed`, bạn clear gì, dữ liệu có nhân đôi không, `dataset_version` có đổi không? Bằng chứng (ảnh, số) là gì?
 
-(trả lời ở đây)
+Trong run `codex-fail-once`, đúng một mapped task `silver_frames[7]` chuyển đỏ; log ghi `RuntimeError: simulated crash while extracting trip-02736`. Bảy task sau nó thành `upstream_failed`: hai dbt Silver, hai dbt Gold, `publish_lake`, `export_dataset`, `publish_warehouse`. Mình clear task failed đó và nó chạy lại thành công; qua Airflow CLI, bảy task `upstream_failed` còn phải được clear riêng để DAG chạy tiếp, sau đó run chuyển xanh. Các mapped task khác không cần chạy lại. Kiểm tra cuối 27/27, Gold vẫn 1.019 khung và version `78fe906f5643`, nên không thấy dữ liệu bị nhân đôi. Ảnh `fail_once_log.png`, `fail_once_task_graph.png` và `airflow_graph.png` là bằng chứng giao diện.
 
 ### Câu 10
 Nâng từ 2 drive lên **500 xe mỗi ngày**: ba thành phần nào của pipeline này sẽ vỡ đầu tiên, và bạn thay bằng gì (nối với slide 12, 22, 23)?
 
-(trả lời ở đây)
+Thứ nhất, trích khung hình hiện tải lại cả video cho từng trip và Airflow đặt `max_active_tis_per_dagrun=1`, nên 500 xe sẽ nghẽn thời gian xử lý; cần worker phân tán, chia video theo đoạn và đọc/cache video một lần mỗi xe. Thứ hai, DuckDB và dbt dùng một file cục bộ, tính lại toàn bảng Silver/Gold; nên chuyển sang xử lý phân tán và incremental theo drive/trip/ngày. Thứ ba, MinIO một node phải chứa và phục vụ rất nhiều video, ảnh và Delta commits; cần object storage phân tán/managed, lifecycle cho dữ liệu thô và giám sát thông lượng. Postgres mart cũng nên nạp incremental thay cho `CREATE OR REPLACE` toàn bảng.
 
 ## Câu hỏi riêng của bạn trên Metabase
 
 Câu SQL bạn thêm vào dashboard và điều nó cho biết:
 
-(trả lời ở đây)
+Mình thêm card **Top 10 trips by frame rejection rate** vào dashboard. SQL lấy `drive_id, trip_id, frames, frames_kept`, tính `round(100.0*(frames-frames_kept)/nullif(frames,0),1) AS drop_pct` từ `marts.mart_trip_summary`, sắp xếp `drop_pct DESC`. Đứng đầu là `trip-04622` của A: 60 khung, giữ 26, loại 34 (**56,7%**). Kiểm tra Silver cho trip này thấy 34 khung `is_near_dup`, không có khung đen, mờ hoặc mất đồng bộ; việc loại chủ yếu do các khung gần trùng.
 
 ## Nhìn lại
 
 Điều bạn thấy bất ngờ nhất, điều gì còn chưa rõ, và một lỗi dữ liệu mà bạn nghĩ pipeline **chưa** bắt được (nếu có). Tối đa 8 dòng.
 
-(trả lời ở đây)
+Điều bất ngờ là B có 61 khung tối nhưng pipeline vẫn giữ chúng nếu đạt các luật khác, trong khi chỉ 4 khung đen bị loại; “tối” không đồng nghĩa “hỏng”. Thí nghiệm retry cho thấy một task khung hình có thể chạy lại mà Gold vẫn giữ 1.019 khung và cùng version. Mình còn muốn kiểm tra thêm độ tin cậy của dHash khi xe di chuyển nhanh. Một lỗi chưa được kiểm tra rõ trong schema là GPS nhảy vị trí đột ngột dù tốc độ và timestamp hợp lệ; nên bổ sung luật khoảng cách/tốc độ suy ra từ tọa độ theo thời gian.
